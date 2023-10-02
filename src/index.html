@@ -15,20 +15,41 @@
     <script>
     (async function() {
         try {
-            const response = await Promise.race([
-                fetch('/api/message'),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000)) // 10-second timeout
-            ]);
+            // Create an XMLHttpRequest object
+            const xhr = new XMLHttpRequest();
 
-            if (response.ok) {
-                const { text } = await response.json();
-                document.querySelector('#name').textContent = text;
-            } else {
-                document.querySelector('#name').textContent = 'Error fetching data';
-            }
+            // Set up a timeout for cancellation
+            const timeout = 10000; // 10 seconds
+            let timedOut = false;
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (timedOut) {
+                        return; // If it's already timed out, do nothing
+                    }
+
+                    if (xhr.status === 200) {
+                        const { text } = JSON.parse(xhr.responseText);
+                        document.querySelector('#name').textContent = text;
+                    } else {
+                        document.querySelector('#name').textContent = 'Error fetching data';
+                    }
+                }
+            };
+
+            xhr.open('GET', '/api/message', true);
+            xhr.send();
+
+            // Set a timeout for cancelling the request
+            setTimeout(() => {
+                timedOut = true;
+                xhr.abort();
+                console.log('Request timed out');
+                document.querySelector('#name').textContent = 'Request timed out';
+            }, timeout);
         } catch (error) {
             console.error(error);
-            document.querySelector('#name').textContent = 'Request timed out or encountered an error.';
+            document.querySelector('#name').textContent = 'Request encountered an error.';
         }
     })();
     </script>
